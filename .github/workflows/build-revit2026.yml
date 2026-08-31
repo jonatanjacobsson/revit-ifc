@@ -29,8 +29,12 @@ jobs:
           REVIT_API_REFS_TOKEN: ${{ secrets.REVIT_API_REFS_TOKEN }}
         shell: pwsh
         run: |
-          $dest = Join-Path $env:GITHUB_WORKSPACE "API\2026"
+          # Project HintPaths are ..\..\..\API\2026 from Source\* (= sibling of the repo root).
+          $repoParent = Split-Path $env:GITHUB_WORKSPACE -Parent
+          $dest = Join-Path $repoParent "API\2026"
           New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          $destInRepo = Join-Path $env:GITHUB_WORKSPACE "API\2026"
+          New-Item -ItemType Directory -Force -Path $destInRepo | Out-Null
           if (-not $env:REVIT_API_REFS_URL) {
             Write-Host "::warning::Secret REVIT_API_REFS_URL is not set. " +
               "Upload a zip of RevitAPI.dll / RevitAPIUI.dll / RevitAPIIFC.dll " +
@@ -56,7 +60,9 @@ jobs:
           if ($nested -and -not (Test-Path (Join-Path $dest "RevitAPI.dll"))) {
             Get-ChildItem $nested.FullName -File | Move-Item -Destination $dest -Force
           }
-          Get-ChildItem $dest -Recurse -Filter "*.dll" | Select-Object FullName
+          Copy-Item (Join-Path $dest "*.dll") -Destination $destInRepo -Force
+          Write-Host "Installed API refs at $dest (HintPath) and $destInRepo"
+          Get-ChildItem $dest -Filter "*.dll" | Select-Object FullName, Length
 
       - name: Restore NuGet
         shell: pwsh
@@ -72,9 +78,14 @@ jobs:
         shell: pwsh
         run: |
           $api = $env:REVIT_API_PATH
-          if (-not (Test-Path (Join-Path $api "RevitAPI.dll"))) {
-            Write-Host "::error::RevitAPI.dll not found under $api. " +
+          $hintApi = Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) "API\2026"
+          if (-not (Test-Path (Join-Path $hintApi "RevitAPI.dll"))) {
+            Write-Host "::error::RevitAPI.dll not found under $hintApi (project HintPath). " +
               "Set repository secret REVIT_API_REFS_URL to a zip of the Revit 2026 API DLLs."
+            exit 1
+          }
+          if (-not (Test-Path (Join-Path $api "RevitAPI.dll"))) {
+            Write-Host "::error::RevitAPI.dll not found under $api."
             exit 1
           }
           msbuild Revit.IFC.sln /m /p:Configuration=Release /p:Platform=x64 `

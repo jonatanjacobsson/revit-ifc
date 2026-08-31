@@ -17,7 +17,7 @@ GitHub-hosted runners do **not** include Autodesk Revit. To compile `Revit.IFC.s
    - **`REVIT_API_REFS_TOKEN`** — PAT (or `gh` token) with `repo` scope so Actions can download the private asset
 4. Do **not** commit Autodesk binaries to git.
 
-`Directory.Build.props` remaps HintPaths when `REVIT_API_PATH` / `API\2026` is present.
+Project HintPaths resolve to a sibling folder `../API/2026` (next to the clone). CI installs the zip there and also under `API/2026` in the repo. `Directory.Build.targets` remaps HintPaths when `REVIT_API_PATH` is set.
 
 Workflow: `.github/workflows/build-revit2026.yml`  
 Tag `mep-colors-*` to publish a pre-release with the patched DLLs.

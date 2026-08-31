@@ -1,0 +1,32 @@
+<!-- Rewrite Revit API HintPaths after project Reference items are defined. -->
+<Project>
+  <Target Name="RedirectRevitApiHintPaths" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(RevitApiPath)' != ''">
+    <ItemGroup>
+      <Reference Condition="'%(Filename)' == 'RevitAPI'">
+        <HintPath>$(RevitApiPath)\RevitAPI.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Condition="'%(Filename)' == 'RevitAPIUI'">
+        <HintPath>$(RevitApiPath)\RevitAPIUI.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Condition="'%(Filename)' == 'RevitAPIIFC'">
+        <HintPath>$(RevitApiPath)\RevitAPIIFC.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Condition="'%(Filename)' == 'Autodesk.UI.Windows'">
+        <HintPath>$(RevitApiPath)\Autodesk.UI.Windows.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Condition="'%(Filename)' == 'Autodesk.Weave.Wpf'">
+        <HintPath>$(RevitApiPath)\Autodesk.Weave.Wpf.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+      <Reference Condition="'%(Filename)' == 'UserInterfaceUtility'">
+        <HintPath>$(RevitApiPath)\UserInterfaceUtility.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+    </ItemGroup>
+  </Target>
+</Project>
