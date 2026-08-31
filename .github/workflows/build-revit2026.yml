@@ -26,6 +26,7 @@ jobs:
       - name: Download Revit API reference assemblies
         env:
           REVIT_API_REFS_URL: ${{ secrets.REVIT_API_REFS_URL }}
+          REVIT_API_REFS_TOKEN: ${{ secrets.REVIT_API_REFS_TOKEN }}
         shell: pwsh
         run: |
           $dest = Join-Path $env:GITHUB_WORKSPACE "API\2026"
@@ -38,8 +39,23 @@ jobs:
             exit 0
           }
           $zip = Join-Path $env:TEMP "revit-api-2026.zip"
-          Invoke-WebRequest -Uri $env:REVIT_API_REFS_URL -OutFile $zip -UseBasicParsing
+          $headers = @{
+            "User-Agent" = "revit-ifc-ci"
+          }
+          if ($env:REVIT_API_REFS_TOKEN) {
+            $headers["Authorization"] = "Bearer $($env:REVIT_API_REFS_TOKEN)"
+            # GitHub private release asset API requires octet-stream Accept
+            if ($env:REVIT_API_REFS_URL -match "api\.github\.com/.+/releases/assets/") {
+              $headers["Accept"] = "application/octet-stream"
+            }
+          }
+          Invoke-WebRequest -Uri $env:REVIT_API_REFS_URL -OutFile $zip -Headers $headers -UseBasicParsing
           Expand-Archive -Path $zip -DestinationPath $dest -Force
+          # Flatten if zip nested a single folder
+          $nested = Get-ChildItem $dest -Directory | Select-Object -First 1
+          if ($nested -and -not (Test-Path (Join-Path $dest "RevitAPI.dll"))) {
+            Get-ChildItem $nested.FullName -File | Move-Item -Destination $dest -Force
+          }
           Get-ChildItem $dest -Recurse -Filter "*.dll" | Select-Object FullName
 
       - name: Restore NuGet
