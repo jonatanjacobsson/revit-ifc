@@ -605,8 +605,9 @@ namespace Revit.IFC.Export.Exporter
          ElementId overrideMaterialId = ExporterUtil.GetSingleMaterial(familyInstance);
 
          bool containedInAssembly = ExporterUtil.IsContainedInAssembly(familyInstance);
+         ElementId mepGraphicKey = MEPSystemTypeColorUtil.GetGraphicOverrideCacheKey(familyInstance);
          var typeKey = new TypeObjectKey(originalFamilySymbol.Id,
-            overrideLevelId, flipped, exportType, overrideMaterialId, containedInAssembly);
+            overrideLevelId, flipped, exportType, overrideMaterialId, containedInAssembly, mepGraphicKey);
 
          FamilyTypeInfo currentTypeInfo = 
             ExporterCacheManager.FamilySymbolToTypeInfoCache.Find(typeKey);

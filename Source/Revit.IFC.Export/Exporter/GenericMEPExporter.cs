@@ -192,7 +192,8 @@ namespace Revit.IFC.Export.Exporter
          if (type != null)
          {
             bool containedInAssembly = ExporterUtil.IsContainedInAssembly(element);
-            var typeKey = new TypeObjectKey(typeId, ElementId.InvalidElementId, false, exportType, ElementId.InvalidElementId, containedInAssembly);
+            ElementId mepGraphicKey = MEPSystemTypeColorUtil.GetGraphicOverrideCacheKey(element);
+            var typeKey = new TypeObjectKey(typeId, ElementId.InvalidElementId, false, exportType, ElementId.InvalidElementId, containedInAssembly, mepGraphicKey);
             
             FamilyTypeInfo currentTypeInfo = 
                ExporterCacheManager.FamilySymbolToTypeInfoCache.Find(typeKey);

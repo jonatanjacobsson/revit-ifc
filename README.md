@@ -1,5 +1,12 @@
 # IFC for Revit and Navisworks (revit-ifc)
 
+> **Fork note (jonatanjacobsson):** This fork adds an opt-in IFC export setting
+> **`UseMEPSystemTypeGraphicOverrides`** ("Use MEP system type graphic override colors")
+> under Additional Content. When enabled, pipes / ducts / fittings use
+> `PipingSystemType` / `MechanicalSystemType` **LineColor** / **FillColor** as
+> `IfcStyledItem` presentation. **IfcMaterial is unchanged.** Default is off.
+> See [.github/README-CI.md](.github/README-CI.md) for GitHub Actions builds.
+
 This is the .NET code used by Revit and Revit LT 2019 and later to support IFC. The open-source version overrides the standard version shipped with Revit and its updates. This contains the source code for Link IFC, IFC export, and the IFC export UI. This also works to improve Navisworks import.
 
 _An archive of the original SourceForge forums can be found [here](https://sourceforge.net/p/ifcexporter/discussion/)._

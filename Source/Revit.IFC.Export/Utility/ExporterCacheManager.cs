@@ -383,6 +383,13 @@ namespace Revit.IFC.Export.Utility
       /// </summary>
       public static PresentationStyleAssignmentCache PresentationStyleAssignmentCache { get; private set; } = new();
 
+      /// <summary>
+      /// Element currently being exported; used when UseMEPSystemTypeGraphicOverrides
+      /// needs the instance to resolve PipingSystemType / MechanicalSystemType colors
+      /// inside BodyExporter.CreateSurfaceStyleForRepItem.
+      /// </summary>
+      public static Element ElementForCurrentSurfaceStyle { get; set; } = null;
+
       private static IDictionary<Tuple<string, string>, string> m_PropertyMapCache = null;
 
       /// Cache for information whether a QuantitySet specified in the Dict. value has been created for the elementHandle
@@ -883,6 +890,8 @@ namespace Revit.IFC.Export.Utility
          MaterialHandleCache.Clear();
          MaterialRelationsCache.Clear();
          MEPCache.Clear();
+         MEPSystemTypeColorUtil.Clear();
+         ElementForCurrentSurfaceStyle = null;
          NonSpatialElements.Clear();
          Object2DCurvesCache.Clear();
          PartExportedCache.Clear();

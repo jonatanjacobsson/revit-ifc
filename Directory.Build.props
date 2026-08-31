@@ -1,0 +1,26 @@
+<!--
+  Optional override for CI / machines without Revit installed at the default path.
+  Set env REVIT_API_PATH to a folder containing RevitAPI.dll, RevitAPIUI.dll, RevitAPIIFC.dll.
+-->
+<Project>
+  <PropertyGroup>
+    <RevitApiPath Condition="'$(REVIT_API_PATH)' != ''">$(REVIT_API_PATH)</RevitApiPath>
+    <RevitApiPath Condition="'$(RevitApiPath)' == '' and Exists('$(SolutionDir)API\2026\RevitAPI.dll')">$(SolutionDir)API\2026</RevitApiPath>
+    <RevitApiPath Condition="'$(RevitApiPath)' == '' and Exists('C:\Program Files\Autodesk\Revit 2026\RevitAPI.dll')">C:\Program Files\Autodesk\Revit 2026</RevitApiPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(RevitApiPath)' != ''">
+    <Reference Update="RevitAPI">
+      <HintPath>$(RevitApiPath)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="RevitAPIUI">
+      <HintPath>$(RevitApiPath)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Update="RevitAPIIFC">
+      <HintPath>$(RevitApiPath)\RevitAPIIFC.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

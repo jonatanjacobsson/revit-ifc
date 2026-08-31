@@ -147,6 +147,13 @@ namespace BIM.IFC.Export.UI
       /// </summary>
       public bool IncludeSteelElements { get; set; } = true;
 
+      /// <summary>
+      /// When true, use PipingSystemType / MechanicalSystemType LineColor and FillColor
+      /// as IfcStyledItem presentation for MEP elements. Does not replace IfcMaterial.
+      /// Default false.
+      /// </summary>
+      public bool UseMEPSystemTypeGraphicOverrides { get; set; } = false;
+
       #region ProjectAddress
 
       /// <summary>

@@ -1960,6 +1960,15 @@ namespace BIM.IFC.Export.UI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Use MEP system type graphic override colors.
+        /// </summary>
+        public static string UseMEPSystemTypeGraphicOverrides {
+            get {
+                return ResourceManager.GetString("UseMEPSystemTypeGraphicOverrides", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to &lt;In-Session Setup&gt;.
         /// </summary>
         public static string InSessionConfiguration {

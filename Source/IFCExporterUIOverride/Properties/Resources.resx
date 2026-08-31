@@ -791,6 +791,9 @@
   <data name="IncludeSteelElements" xml:space="preserve">
     <value>Include Steel Elements</value>
   </data>
+  <data name="UseMEPSystemTypeGraphicOverrides" xml:space="preserve">
+    <value>Use MEP system type graphic override colors</value>
+  </data>
   <data name="UseOnlyTriangulation" xml:space="preserve">
     <value>Keep Tessellated Geometry as Triangulation</value>
   </data>

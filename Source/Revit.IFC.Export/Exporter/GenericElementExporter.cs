@@ -178,8 +178,9 @@ namespace Revit.IFC.Export.Exporter
          // GUID_TODO: This assumes that there are no types relating to objects split by level,
          // or to doors/windows that are flipped.
          bool containedInAssembly = ExporterUtil.IsContainedInAssembly(element);
+         ElementId mepGraphicKey = MEPSystemTypeColorUtil.GetGraphicOverrideCacheKey(element);
          var typeKey = new TypeObjectKey(symbolId, ElementId.InvalidElementId,
-            false, exportType, ElementId.InvalidElementId, containedInAssembly);
+            false, exportType, ElementId.InvalidElementId, containedInAssembly, mepGraphicKey);
 
          FamilyTypeInfo currentTypeInfo = 
             ExporterCacheManager.FamilySymbolToTypeInfoCache.Find(typeKey);

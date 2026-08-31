@@ -1012,6 +1012,7 @@ namespace Revit.IFC.Export.Exporter
          try
          {
             exporterIFC.PushExportState(element, geomElem);
+            ExporterCacheManager.ElementForCurrentSurfaceStyle = element;
             IFCFile file = exporterIFC.GetFile();
 
             Document doc = element.Document;
@@ -1293,6 +1294,7 @@ namespace Revit.IFC.Export.Exporter
          }
          finally
          {
+            ExporterCacheManager.ElementForCurrentSurfaceStyle = null;
             exporterIFC.PopExportState();
             ExporterStateManager.PreserveElementParameterCache(element, shouldPreserveParameterCache);
          }

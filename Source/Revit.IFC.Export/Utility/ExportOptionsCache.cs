@@ -108,6 +108,13 @@ namespace Revit.IFC.Export.Utility
 
       public bool IncludeSteelElements { get; set; }
 
+      /// <summary>
+      /// When true, paint MEP pipes/ducts/fittings from PipingSystemType /
+      /// MechanicalSystemType LineColor / FillColor as IfcStyledItem (does not
+      /// replace IfcMaterial). Default false.
+      /// </summary>
+      public bool UseMEPSystemTypeGraphicOverrides { get; set; }
+
       public IDictionary<long, string> FederatedLinkInfo { get; set; } = null;
 
       /// <summary>
@@ -282,6 +289,12 @@ namespace Revit.IFC.Export.Utility
          // export to match the default UI.
          bool? includeSteelElements = OptionsUtil.GetNamedBooleanOption(options, "IncludeSteelElements");
          cache.IncludeSteelElements = includeSteelElements.HasValue && includeSteelElements.Value;
+
+         // Opt-in: use MEP system type LineColor/FillColor as IfcStyledItem presentation.
+         bool? useMepSystemTypeGraphicOverrides = OptionsUtil.GetNamedBooleanOption(options,
+            "UseMEPSystemTypeGraphicOverrides");
+         cache.UseMEPSystemTypeGraphicOverrides =
+            useMepSystemTypeGraphicOverrides.HasValue && useMepSystemTypeGraphicOverrides.Value;
 
          if (filterView == null)
          {

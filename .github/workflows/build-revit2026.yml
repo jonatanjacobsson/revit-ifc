@@ -1,0 +1,120 @@
+name: Build Revit 2026 IFC exporter
+
+on:
+  push:
+    branches: [ feature/mep-system-type-graphic-overrides, master, main, "Release_26*" ]
+    tags: [ "mep-colors-*" ]
+  pull_request:
+    branches: [ master, main, "Release_26*" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Download Revit API reference assemblies
+        env:
+          REVIT_API_REFS_URL: ${{ secrets.REVIT_API_REFS_URL }}
+        shell: pwsh
+        run: |
+          $dest = Join-Path $env:GITHUB_WORKSPACE "API\2026"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          if (-not $env:REVIT_API_REFS_URL) {
+            Write-Host "::warning::Secret REVIT_API_REFS_URL is not set. " +
+              "Upload a zip of RevitAPI.dll / RevitAPIUI.dll / RevitAPIIFC.dll " +
+              "(from a Revit 2026 install) to a private URL and store it as that secret. " +
+              "Build will attempt default HintPaths and may fail without refs."
+            exit 0
+          }
+          $zip = Join-Path $env:TEMP "revit-api-2026.zip"
+          Invoke-WebRequest -Uri $env:REVIT_API_REFS_URL -OutFile $zip -UseBasicParsing
+          Expand-Archive -Path $zip -DestinationPath $dest -Force
+          Get-ChildItem $dest -Recurse -Filter "*.dll" | Select-Object FullName
+
+      - name: Restore NuGet
+        shell: pwsh
+        run: |
+          nuget restore Revit.IFC.sln -NonInteractive
+          if ($LASTEXITCODE -ne 0) {
+            dotnet restore Revit.IFC.sln
+          }
+
+      - name: Build exporter + UI (Release|x64)
+        env:
+          REVIT_API_PATH: ${{ github.workspace }}\API\2026
+        shell: pwsh
+        run: |
+          $api = $env:REVIT_API_PATH
+          if (-not (Test-Path (Join-Path $api "RevitAPI.dll"))) {
+            Write-Host "::error::RevitAPI.dll not found under $api. " +
+              "Set repository secret REVIT_API_REFS_URL to a zip of the Revit 2026 API DLLs."
+            exit 1
+          }
+          msbuild Revit.IFC.sln /m /p:Configuration=Release /p:Platform=x64 `
+            /t:Restore,Build `
+            /p:BuildProjectReferences=true `
+            /v:minimal
+
+      - name: Stage patched DLLs
+        if: success()
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:GITHUB_WORKSPACE "artifacts\IFC-2026-mep-colors"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $candidates = @(
+            "Intermediate\Releasex64\Revit.IFC.Export\Revit.IFC.Export.dll",
+            "bin\Release\Revit.IFC.Export.dll",
+            "Source\Revit.IFC.Export\bin\x64\Release\Revit.IFC.Export.dll",
+            "Source\IFCExporterUIOverride\bin\x64\Release\IFCExporterUIOverride.dll",
+            "Intermediate\Releasex64\IFCExporterUIOverride\IFCExporterUIOverride.dll"
+          )
+          Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Include `
+            "Revit.IFC.Export.dll","IFCExporterUIOverride.dll","IFCExportUIOverride.dll" `
+            -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "Release" } |
+            ForEach-Object {
+              Copy-Item $_.FullName -Destination (Join-Path $out $_.Name) -Force
+              Write-Host "Staged $($_.FullName)"
+            }
+          if (-not (Get-ChildItem $out -Filter "*.dll" -ErrorAction SilentlyContinue)) {
+            Write-Host "::warning::No Release DLLs found to stage; listing build outputs:"
+            Get-ChildItem $env:GITHUB_WORKSPACE -Recurse -Filter "*.dll" |
+              Where-Object { $_.FullName -match "IFC" } |
+              Select-Object -First 40 FullName
+          }
+          Copy-Item README.md (Join-Path $out "README.md") -Force
+          @"
+          Install: replace matching DLLs under
+          C:\ProgramData\Autodesk\ApplicationPlugins\IFC 2026.bundle\Contents\2026
+          after installing Autodesk IFC_v26.4.1 MSI. Keep stock DLL backups.
+          Enable: IFC Export > Additional Content > Use MEP system type graphic override colors.
+          "@ | Set-Content (Join-Path $out "INSTALL.txt")
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ifc-2026-mep-system-type-colors
+          path: artifacts/IFC-2026-mep-colors
+          if-no-files-found: warn
+
+      - name: Create GitHub Release on tag
+        if: startsWith(github.ref, 'refs/tags/mep-colors-')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/IFC-2026-mep-colors/*
+          generate_release_notes: true
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

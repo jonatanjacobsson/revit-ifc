@@ -502,6 +502,36 @@ namespace Revit.IFC.Export.Exporter
 
          IFCFile file = exporterIFC.GetFile();
 
+         // Opt-in: MEP system type LineColor / FillColor as IfcStyledItem (does not replace IfcMaterial).
+         if (MEPSystemTypeColorUtil.IsEnabled() &&
+             MEPSystemTypeColorUtil.TryGetGraphicOverrideColor(
+                ExporterCacheManager.ElementForCurrentSurfaceStyle, out Color mepColor))
+         {
+            IFCAnyHandle mepSurfStyleHnd = MEPSystemTypeColorUtil.GetOrCreateSurfaceStyleForColor(file, mepColor);
+            if (!IFCAnyHandleUtil.IsNullOrHasNoValue(mepSurfStyleHnd))
+            {
+               IFCAnyHandle mepPresStyleHnd = mepSurfStyleHnd;
+               if (ExporterCacheManager.ExportOptionsCache.ExportAsOlderThanIFC4)
+               {
+                  ISet<IFCAnyHandle> mepStyles = new HashSet<IFCAnyHandle>() { mepSurfStyleHnd };
+                  mepPresStyleHnd = IFCInstanceExporter.CreatePresentationStyleAssignment(file, mepStyles);
+               }
+
+               HashSet<IFCAnyHandle> mepPresStyleSet = new HashSet<IFCAnyHandle>() { mepPresStyleHnd };
+               HashSet<IFCAnyHandle> existingStyled = IFCAnyHandleUtil.GetAggregateInstanceAttribute<HashSet<IFCAnyHandle>>(repItemHnd, "StyledByItem");
+               if (existingStyled == null || existingStyled.Count == 0)
+               {
+                  IFCInstanceExporter.CreateStyledItem(file, repItemHnd, mepPresStyleSet, null);
+               }
+               else
+               {
+                  IFCAnyHandle styledItem = existingStyled.First();
+                  IFCAnyHandleUtil.SetAttribute(styledItem, "Styles", mepPresStyleSet);
+               }
+               return;
+            }
+         }
+
          ElementId materialId = (overrideMatId != ElementId.InvalidElementId) ? overrideMatId : exporterIFC.GetMaterialIdForCurrentExportState();
          if (materialId == ElementId.InvalidElementId)
             return;

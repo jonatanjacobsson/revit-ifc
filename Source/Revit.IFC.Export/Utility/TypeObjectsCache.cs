@@ -26,7 +26,7 @@ using Revit.IFC.Common.Enums;
 namespace Revit.IFC.Export.Utility
 {
    /// <summary>
-   /// TypeObjectKey has six components:
+   /// TypeObjectKey components:
    /// 1. Symbol id.
    /// 2. Level id (if we are splitting by level).
    /// 3. Flipped (true if the symbol is flipped).
@@ -34,12 +34,16 @@ namespace Revit.IFC.Export.Utility
    /// 5. The corresponding IFC predefined type.
    /// 6. Override material id.
    /// 7. Type of elements contained in assembly.
+   /// 8. MEP system type graphic-override cache key (packed RGB as negative ElementId when
+   ///    UseMEPSystemTypeGraphicOverrides is on; InvalidElementId otherwise).
    /// </summary>
-   public sealed class TypeObjectKey : Tuple<ElementId, ElementId, bool, IFCEntityType, string, ElementId, bool>
+   public sealed class TypeObjectKey : Tuple<ElementId, ElementId, bool, IFCEntityType, string, ElementId, bool, ElementId>
    {
       public TypeObjectKey(ElementId elementId, ElementId levelId, bool flipped,
-         IFCExportInfoPair exportType, ElementId materialId, bool inAssembly) :
-         base(elementId, levelId, flipped, exportType.ExportType, exportType.PredefinedType, materialId, inAssembly)
+         IFCExportInfoPair exportType, ElementId materialId, bool inAssembly,
+         ElementId mepSystemGraphicOverrideKey = null) :
+         base(elementId, levelId, flipped, exportType.ExportType, exportType.PredefinedType, materialId, inAssembly,
+            mepSystemGraphicOverrideKey ?? ElementId.InvalidElementId)
       { }
 
       public ElementId ElementId { get { return Item1; } }
@@ -55,6 +59,8 @@ namespace Revit.IFC.Export.Utility
       public ElementId MaterialId { get { return Item6; } }
 
       public bool InAssembly { get { return Item7; } }
+
+      public ElementId MEPSystemGraphicOverrideKey { get { return Item8; } }
    }
 
    /// <summary>

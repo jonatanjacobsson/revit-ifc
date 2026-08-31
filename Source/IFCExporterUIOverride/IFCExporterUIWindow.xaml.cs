@@ -459,6 +459,7 @@ namespace BIM.IFC.Export.UI
          checkBoxExportRoomsInView.IsChecked = configuration.ExportRoomsInView;
          comboBoxLOD.SelectedIndex = (int)(Math.Round(configuration.TessellationLevelOfDetail * 4) - 1);
          checkboxIncludeSteelElements.IsChecked = configuration.IncludeSteelElements;
+         checkboxUseMEPSystemTypeGraphicOverrides.IsChecked = configuration.UseMEPSystemTypeGraphicOverrides;
          comboBoxSitePlacement.SelectedIndex = (int)configuration.SitePlacement;
          comboboxLinkedFiles.SelectedIndex = (int)configuration.ExportLinkedFiles;
          if ((configuration.IFCVersion == IFCVersion.IFC4 || configuration.IFCVersion == IFCVersion.IFC4DTV || configuration.IFCVersion == IFCVersion.IFC4RV)
@@ -1711,6 +1712,18 @@ namespace BIM.IFC.Export.UI
       {
          IFCExportConfiguration configuration = GetSelectedConfiguration();
          configuration.IncludeSteelElements = false;
+      }
+
+      private void checkboxUseMEPSystemTypeGraphicOverrides_Checked(object sender, RoutedEventArgs e)
+      {
+         IFCExportConfiguration configuration = GetSelectedConfiguration();
+         configuration.UseMEPSystemTypeGraphicOverrides = true;
+      }
+
+      private void checkboxUseMEPSystemTypeGraphicOverrides_Unchecked(object sender, RoutedEventArgs e)
+      {
+         IFCExportConfiguration configuration = GetSelectedConfiguration();
+         configuration.UseMEPSystemTypeGraphicOverrides = false;
       }
 
       private void Checkbox_UseTypeNameOnly_Checked(object sender, RoutedEventArgs e)
