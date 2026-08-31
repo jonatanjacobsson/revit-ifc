@@ -37,13 +37,13 @@ namespace Revit.IFC.Export.Utility
    /// 8. MEP system type graphic-override cache key (packed RGB as negative ElementId when
    ///    UseMEPSystemTypeGraphicOverrides is on; InvalidElementId otherwise).
    /// </summary>
-   public sealed class TypeObjectKey : Tuple<ElementId, ElementId, bool, IFCEntityType, string, ElementId, bool, ElementId>
+   public sealed class TypeObjectKey : Tuple<ElementId, ElementId, bool, IFCEntityType, string, ElementId, bool, Tuple<ElementId>>
    {
       public TypeObjectKey(ElementId elementId, ElementId levelId, bool flipped,
          IFCExportInfoPair exportType, ElementId materialId, bool inAssembly,
          ElementId mepSystemGraphicOverrideKey = null) :
          base(elementId, levelId, flipped, exportType.ExportType, exportType.PredefinedType, materialId, inAssembly,
-            mepSystemGraphicOverrideKey ?? ElementId.InvalidElementId)
+            Tuple.Create(mepSystemGraphicOverrideKey ?? ElementId.InvalidElementId))
       { }
 
       public ElementId ElementId { get { return Item1; } }
@@ -60,7 +60,7 @@ namespace Revit.IFC.Export.Utility
 
       public bool InAssembly { get { return Item7; } }
 
-      public ElementId MEPSystemGraphicOverrideKey { get { return Item8; } }
+      public ElementId MEPSystemGraphicOverrideKey { get { return Rest.Item1; } }
    }
 
    /// <summary>
