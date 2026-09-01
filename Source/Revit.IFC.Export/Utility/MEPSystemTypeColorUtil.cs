@@ -71,11 +71,27 @@ namespace Revit.IFC.Export.Utility
       {
          color = null;
          if (!IsEnabled() || element == null)
+         {
+            // #region agent log
+            MepColorDebugLog.Write("A", "MEPSystemTypeColorUtil.cs:73", "TryGetGraphicOverrideColor skipped",
+               string.Format("{{\"enabled\":{0},\"hasElement\":{1}}}",
+                  IsEnabled() ? "true" : "false",
+                  element != null ? "true" : "false"));
+            // #endregion
             return false;
+         }
 
          MEPSystemType systemType = GetMEPSystemType(element);
          if (systemType == null)
+         {
+            // #region agent log
+            MepColorDebugLog.Write("C", "MEPSystemTypeColorUtil.cs:77", "No MEPSystemType resolved",
+               string.Format("{{\"elementId\":{0},\"categoryId\":{1}}}",
+                  element.Id.Value,
+                  CategoryUtil.GetSafeCategoryId(element)?.Value ?? -1));
+            // #endregion
             return false;
+         }
 
          try
          {
@@ -83,6 +99,13 @@ namespace Revit.IFC.Export.Utility
             if (fill != null && fill.IsValid)
             {
                color = fill;
+               // #region agent log
+               MepColorDebugLog.Write("D", "MEPSystemTypeColorUtil.cs:85", "Using FillColor",
+                  string.Format("{{\"elementId\":{0},\"systemType\":\"{1}\",\"rgb\":\"{2},{3},{4}\"}}",
+                     element.Id.Value,
+                     EscapeJson(systemType.Name),
+                     fill.Red, fill.Green, fill.Blue));
+               // #endregion
                return true;
             }
          }
@@ -96,6 +119,13 @@ namespace Revit.IFC.Export.Utility
             if (line != null && line.IsValid)
             {
                color = line;
+               // #region agent log
+               MepColorDebugLog.Write("D", "MEPSystemTypeColorUtil.cs:99", "Using LineColor",
+                  string.Format("{{\"elementId\":{0},\"systemType\":\"{1}\",\"rgb\":\"{2},{3},{4}\"}}",
+                     element.Id.Value,
+                     EscapeJson(systemType.Name),
+                     line.Red, line.Green, line.Blue));
+               // #endregion
                return true;
             }
          }
@@ -103,7 +133,20 @@ namespace Revit.IFC.Export.Utility
          {
          }
 
+         // #region agent log
+         MepColorDebugLog.Write("D", "MEPSystemTypeColorUtil.cs:106", "System type has no valid colors",
+            string.Format("{{\"elementId\":{0},\"systemType\":\"{1}\"}}",
+               element.Id.Value,
+               EscapeJson(systemType.Name)));
+         // #endregion
          return false;
+      }
+
+      private static string EscapeJson(string value)
+      {
+         if (string.IsNullOrEmpty(value))
+            return string.Empty;
+         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
       }
 
       public static MEPSystemType GetMEPSystemType(Element element)

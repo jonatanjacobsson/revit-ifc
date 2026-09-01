@@ -510,6 +510,13 @@ namespace Revit.IFC.Export.Exporter
             IFCAnyHandle mepSurfStyleHnd = MEPSystemTypeColorUtil.GetOrCreateSurfaceStyleForColor(file, mepColor);
             if (!IFCAnyHandleUtil.IsNullOrHasNoValue(mepSurfStyleHnd))
             {
+               // #region agent log
+               MepColorDebugLog.Write("E", "BodyExporter.cs:512", "Applied MEP styled item",
+                  string.Format("{{\"elementId\":{0},\"rgb\":\"{1},{2},{3}\",\"ifc2x2\":{4}}}",
+                     ExporterCacheManager.ElementForCurrentSurfaceStyle?.Id.Value ?? -1,
+                     mepColor.Red, mepColor.Green, mepColor.Blue,
+                     ExporterCacheManager.ExportOptionsCache.ExportAs2x2 ? "true" : "false"));
+               // #endregion
                IFCAnyHandle mepPresStyleHnd = mepSurfStyleHnd;
                if (ExporterCacheManager.ExportOptionsCache.ExportAsOlderThanIFC4)
                {
