@@ -296,13 +296,6 @@ namespace Revit.IFC.Export.Utility
          cache.UseMEPSystemTypeGraphicOverrides =
             useMepSystemTypeGraphicOverrides.HasValue && useMepSystemTypeGraphicOverrides.Value;
 
-         // #region agent log
-         MepColorDebugLog.Write("A", "ExportOptionsCache.cs:296", "UseMEPSystemTypeGraphicOverrides loaded",
-            string.Format("{{\"enabled\":{0},\"hasOption\":{1}}}",
-               cache.UseMEPSystemTypeGraphicOverrides ? "true" : "false",
-               useMepSystemTypeGraphicOverrides.HasValue ? "true" : "false"));
-         // #endregion
-
          if (filterView == null)
          {
             // if the filter view is null, but we have a HostViewId set, that means that we are

@@ -507,23 +507,9 @@ namespace Revit.IFC.Export.Exporter
              MEPSystemTypeColorUtil.TryGetGraphicOverrideColor(
                 ExporterCacheManager.ElementForCurrentSurfaceStyle, out Color mepColor))
          {
-            IFCAnyHandle mepSurfStyleHnd = MEPSystemTypeColorUtil.GetOrCreateSurfaceStyleForColor(file, mepColor);
-            if (!IFCAnyHandleUtil.IsNullOrHasNoValue(mepSurfStyleHnd))
+            IFCAnyHandle mepPresStyleHnd = MEPSystemTypeColorUtil.GetOrCreatePresentationForColor(file, mepColor);
+            if (!IFCAnyHandleUtil.IsNullOrHasNoValue(mepPresStyleHnd))
             {
-               // #region agent log
-               MepColorDebugLog.Write("E", "BodyExporter.cs:512", "Applied MEP styled item",
-                  string.Format("{{\"elementId\":{0},\"rgb\":\"{1},{2},{3}\",\"ifc2x2\":{4}}}",
-                     ExporterCacheManager.ElementForCurrentSurfaceStyle?.Id.Value ?? -1,
-                     mepColor.Red, mepColor.Green, mepColor.Blue,
-                     ExporterCacheManager.ExportOptionsCache.ExportAs2x2 ? "true" : "false"));
-               // #endregion
-               IFCAnyHandle mepPresStyleHnd = mepSurfStyleHnd;
-               if (ExporterCacheManager.ExportOptionsCache.ExportAsOlderThanIFC4)
-               {
-                  ISet<IFCAnyHandle> mepStyles = new HashSet<IFCAnyHandle>() { mepSurfStyleHnd };
-                  mepPresStyleHnd = IFCInstanceExporter.CreatePresentationStyleAssignment(file, mepStyles);
-               }
-
                HashSet<IFCAnyHandle> mepPresStyleSet = new HashSet<IFCAnyHandle>() { mepPresStyleHnd };
                HashSet<IFCAnyHandle> existingStyled = IFCAnyHandleUtil.GetAggregateInstanceAttribute<HashSet<IFCAnyHandle>>(repItemHnd, "StyledByItem");
                if (existingStyled == null || existingStyled.Count == 0)

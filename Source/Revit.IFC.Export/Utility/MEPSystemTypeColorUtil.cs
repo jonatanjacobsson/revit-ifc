@@ -29,14 +29,64 @@ namespace Revit.IFC.Export.Utility
    {
       /// <summary>
       /// Cache of IfcSurfaceStyle handles keyed by packed RGB (0xRRGGBB).
-      /// Cleared with the rest of the export caches.
       /// </summary>
-      public static IDictionary<int, IFCAnyHandle> RgbToSurfaceStyleCache { get; private set; }
-         = new Dictionary<int, IFCAnyHandle>();
+      private static readonly Dictionary<int, IFCAnyHandle> RgbToSurfaceStyleCache = new Dictionary<int, IFCAnyHandle>();
+
+      /// <summary>
+      /// Cache of presentation handles for StyledItem.Styles (IfcSurfaceStyle on IFC4+,
+      /// IfcPresentationStyleAssignment on IFC2x3) keyed by packed RGB.
+      /// </summary>
+      private static readonly Dictionary<int, IFCAnyHandle> RgbToPresentationCache = new Dictionary<int, IFCAnyHandle>();
+
+      /// <summary>
+      /// Per-element resolved color for the current export. Avoids repeated system-type / connector walks.
+      /// </summary>
+      private static readonly Dictionary<ElementId, Color> ElementColorCache = new Dictionary<ElementId, Color>();
+
+      /// <summary>
+      /// Elements already resolved with no usable graphic override color.
+      /// </summary>
+      private static readonly HashSet<ElementId> ElementNoColorCache = new HashSet<ElementId>();
+
+      /// <summary>
+      /// Per-element MEPSystemType (null stored as missing from both maps below).
+      /// </summary>
+      private static readonly Dictionary<ElementId, MEPSystemType> ElementSystemTypeCache = new Dictionary<ElementId, MEPSystemType>();
+      private static readonly HashSet<ElementId> ElementNoSystemTypeCache = new HashSet<ElementId>();
+
+      private static readonly HashSet<long> PipeRelatedCategories = new HashSet<long>
+      {
+         (long)BuiltInCategory.OST_PipeCurves,
+         (long)BuiltInCategory.OST_FlexPipeCurves,
+         (long)BuiltInCategory.OST_PipeFitting,
+         (long)BuiltInCategory.OST_PipeAccessory,
+         (long)BuiltInCategory.OST_PipeInsulations,
+         (long)BuiltInCategory.OST_PlaceHolderPipes,
+         (long)BuiltInCategory.OST_PlumbingFixtures,
+         (long)BuiltInCategory.OST_Sprinklers,
+         (long)BuiltInCategory.OST_AnalyticalPipeConnections
+      };
+
+      private static readonly HashSet<long> DuctRelatedCategories = new HashSet<long>
+      {
+         (long)BuiltInCategory.OST_DuctCurves,
+         (long)BuiltInCategory.OST_FlexDuctCurves,
+         (long)BuiltInCategory.OST_DuctFitting,
+         (long)BuiltInCategory.OST_DuctAccessory,
+         (long)BuiltInCategory.OST_DuctInsulations,
+         (long)BuiltInCategory.OST_DuctLinings,
+         (long)BuiltInCategory.OST_DuctTerminal,
+         (long)BuiltInCategory.OST_PlaceHolderDucts
+      };
 
       public static void Clear()
       {
          RgbToSurfaceStyleCache.Clear();
+         RgbToPresentationCache.Clear();
+         ElementColorCache.Clear();
+         ElementNoColorCache.Clear();
+         ElementSystemTypeCache.Clear();
+         ElementNoSystemTypeCache.Clear();
       }
 
       public static bool IsEnabled()
@@ -53,8 +103,6 @@ namespace Revit.IFC.Export.Utility
          if (!TryGetGraphicOverrideColor(element, out Color color))
             return ElementId.InvalidElementId;
 
-         // Use a negative ElementId value space so we never collide with real element ids.
-         // ElementId supports long values; we encode 0x01RRGGBB as a negative id key via Value.
          int packed = PackRgb(color);
          return new ElementId(-(1L << 24) - packed);
       }
@@ -66,30 +114,24 @@ namespace Revit.IFC.Export.Utility
 
       /// <summary>
       /// Prefer FillColor for solids; fall back to LineColor.
+      /// Results are cached per element for the export run.
       /// </summary>
       public static bool TryGetGraphicOverrideColor(Element element, out Color color)
       {
          color = null;
          if (!IsEnabled() || element == null)
-         {
-            // #region agent log
-            MepColorDebugLog.Write("A", "MEPSystemTypeColorUtil.cs:73", "TryGetGraphicOverrideColor skipped",
-               string.Format("{{\"enabled\":{0},\"hasElement\":{1}}}",
-                  IsEnabled() ? "true" : "false",
-                  element != null ? "true" : "false"));
-            // #endregion
             return false;
-         }
+
+         ElementId elementId = element.Id;
+         if (ElementColorCache.TryGetValue(elementId, out color))
+            return true;
+         if (ElementNoColorCache.Contains(elementId))
+            return false;
 
          MEPSystemType systemType = GetMEPSystemType(element);
          if (systemType == null)
          {
-            // #region agent log
-            MepColorDebugLog.Write("C", "MEPSystemTypeColorUtil.cs:77", "No MEPSystemType resolved",
-               string.Format("{{\"elementId\":{0},\"categoryId\":{1}}}",
-                  element.Id.Value,
-                  CategoryUtil.GetSafeCategoryId(element)?.Value ?? -1));
-            // #endregion
+            ElementNoColorCache.Add(elementId);
             return false;
          }
 
@@ -99,13 +141,7 @@ namespace Revit.IFC.Export.Utility
             if (fill != null && fill.IsValid)
             {
                color = fill;
-               // #region agent log
-               MepColorDebugLog.Write("D", "MEPSystemTypeColorUtil.cs:85", "Using FillColor",
-                  string.Format("{{\"elementId\":{0},\"systemType\":\"{1}\",\"rgb\":\"{2},{3},{4}\"}}",
-                     element.Id.Value,
-                     EscapeJson(systemType.Name),
-                     fill.Red, fill.Green, fill.Blue));
-               // #endregion
+               ElementColorCache[elementId] = color;
                return true;
             }
          }
@@ -119,13 +155,7 @@ namespace Revit.IFC.Export.Utility
             if (line != null && line.IsValid)
             {
                color = line;
-               // #region agent log
-               MepColorDebugLog.Write("D", "MEPSystemTypeColorUtil.cs:99", "Using LineColor",
-                  string.Format("{{\"elementId\":{0},\"systemType\":\"{1}\",\"rgb\":\"{2},{3},{4}\"}}",
-                     element.Id.Value,
-                     EscapeJson(systemType.Name),
-                     line.Red, line.Green, line.Blue));
-               // #endregion
+               ElementColorCache[elementId] = color;
                return true;
             }
          }
@@ -133,20 +163,8 @@ namespace Revit.IFC.Export.Utility
          {
          }
 
-         // #region agent log
-         MepColorDebugLog.Write("D", "MEPSystemTypeColorUtil.cs:106", "System type has no valid colors",
-            string.Format("{{\"elementId\":{0},\"systemType\":\"{1}\"}}",
-               element.Id.Value,
-               EscapeJson(systemType.Name)));
-         // #endregion
+         ElementNoColorCache.Add(elementId);
          return false;
-      }
-
-      private static string EscapeJson(string value)
-      {
-         if (string.IsNullOrEmpty(value))
-            return string.Empty;
-         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
       }
 
       public static MEPSystemType GetMEPSystemType(Element element)
@@ -154,6 +172,22 @@ namespace Revit.IFC.Export.Utility
          if (element == null)
             return null;
 
+         ElementId elementId = element.Id;
+         if (ElementSystemTypeCache.TryGetValue(elementId, out MEPSystemType cached))
+            return cached;
+         if (ElementNoSystemTypeCache.Contains(elementId))
+            return null;
+
+         MEPSystemType resolved = ResolveMEPSystemType(element);
+         if (resolved != null)
+            ElementSystemTypeCache[elementId] = resolved;
+         else
+            ElementNoSystemTypeCache.Add(elementId);
+         return resolved;
+      }
+
+      private static MEPSystemType ResolveMEPSystemType(Element element)
+      {
          if (element is MEPSystemType asType)
             return asType;
 
@@ -162,23 +196,29 @@ namespace Revit.IFC.Export.Utility
          ElementId categoryId = CategoryUtil.GetSafeCategoryId(element);
          long categoryValue = categoryId?.Value ?? -1;
 
-         if (IsPipeRelated(categoryValue))
+         if (PipeRelatedCategories.Contains(categoryValue))
          {
             ParameterUtil.GetElementIdValueFromElement(element,
                BuiltInParameter.RBS_PIPING_SYSTEM_TYPE_PARAM, out systemTypeId);
          }
-         else if (IsDuctRelated(categoryValue))
+         else if (DuctRelatedCategories.Contains(categoryValue))
          {
             ParameterUtil.GetElementIdValueFromElement(element,
                BuiltInParameter.RBS_DUCT_SYSTEM_TYPE_PARAM, out systemTypeId);
          }
 
          if (systemTypeId != ElementId.InvalidElementId)
-         {
             return doc.GetElement(systemTypeId) as MEPSystemType;
+
+         // Pipe/duct system instances — cheap check before connector walk.
+         if (element is MEPSystem mepSystem)
+         {
+            ElementId typeId = mepSystem.GetTypeId();
+            if (typeId != ElementId.InvalidElementId)
+               return doc.GetElement(typeId) as MEPSystemType;
          }
 
-         // Fittings / accessories: walk connectors for an MEPSystem.
+         // Fittings / accessories: walk connectors for an MEPSystem (expensive; cached above).
          FamilyInstance fi = element as FamilyInstance;
          if (fi?.MEPModel?.ConnectorManager != null)
          {
@@ -202,40 +242,7 @@ namespace Revit.IFC.Export.Utility
             }
          }
 
-         // Pipe/duct system instances
-         if (element is MEPSystem mepSystem)
-         {
-            ElementId typeId = mepSystem.GetTypeId();
-            if (typeId != ElementId.InvalidElementId)
-               return doc.GetElement(typeId) as MEPSystemType;
-         }
-
          return null;
-      }
-
-      private static bool IsPipeRelated(long categoryValue)
-      {
-         return categoryValue == (long)BuiltInCategory.OST_PipeCurves ||
-            categoryValue == (long)BuiltInCategory.OST_FlexPipeCurves ||
-            categoryValue == (long)BuiltInCategory.OST_PipeFitting ||
-            categoryValue == (long)BuiltInCategory.OST_PipeAccessory ||
-            categoryValue == (long)BuiltInCategory.OST_PipeInsulations ||
-            categoryValue == (long)BuiltInCategory.OST_PlaceHolderPipes ||
-            categoryValue == (long)BuiltInCategory.OST_PlumbingFixtures ||
-            categoryValue == (long)BuiltInCategory.OST_Sprinklers ||
-            categoryValue == (long)BuiltInCategory.OST_AnalyticalPipeConnections;
-      }
-
-      private static bool IsDuctRelated(long categoryValue)
-      {
-         return categoryValue == (long)BuiltInCategory.OST_DuctCurves ||
-            categoryValue == (long)BuiltInCategory.OST_FlexDuctCurves ||
-            categoryValue == (long)BuiltInCategory.OST_DuctFitting ||
-            categoryValue == (long)BuiltInCategory.OST_DuctAccessory ||
-            categoryValue == (long)BuiltInCategory.OST_DuctInsulations ||
-            categoryValue == (long)BuiltInCategory.OST_DuctLinings ||
-            categoryValue == (long)BuiltInCategory.OST_DuctTerminal ||
-            categoryValue == (long)BuiltInCategory.OST_PlaceHolderDucts;
       }
 
       /// <summary>
@@ -273,6 +280,37 @@ namespace Revit.IFC.Export.Utility
 
          RgbToSurfaceStyleCache[packed] = styleHnd;
          return styleHnd;
+      }
+
+      /// <summary>
+      /// Presentation handle for IfcStyledItem.Styles: surface style on IFC4+,
+      /// presentation-style assignment on IFC2x3. Cached per RGB.
+      /// </summary>
+      public static IFCAnyHandle GetOrCreatePresentationForColor(IFCFile file, Color color)
+      {
+         if (file == null || color == null || !color.IsValid)
+            return null;
+
+         int packed = PackRgb(color);
+         if (RgbToPresentationCache.TryGetValue(packed, out IFCAnyHandle cached) &&
+             !IFCAnyHandleUtil.IsNullOrHasNoValue(cached))
+         {
+            return cached;
+         }
+
+         IFCAnyHandle surfStyleHnd = GetOrCreateSurfaceStyleForColor(file, color);
+         if (IFCAnyHandleUtil.IsNullOrHasNoValue(surfStyleHnd))
+            return null;
+
+         IFCAnyHandle presentationHnd = surfStyleHnd;
+         if (ExporterCacheManager.ExportOptionsCache.ExportAsOlderThanIFC4)
+         {
+            ISet<IFCAnyHandle> styles = new HashSet<IFCAnyHandle>() { surfStyleHnd };
+            presentationHnd = IFCInstanceExporter.CreatePresentationStyleAssignment(file, styles);
+         }
+
+         RgbToPresentationCache[packed] = presentationHnd;
+         return presentationHnd;
       }
    }
 }
